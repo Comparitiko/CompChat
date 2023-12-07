@@ -16,6 +16,7 @@
       return username
     }
 
+    // Hacer fetch a una api de usuarios random y devolver el username
     const res = await fetch('https://random-data-api.com/api/users/random_user')
     const {username: randomUsername} = await res.json()
     console.log(randomUsername)
@@ -23,7 +24,6 @@
     localStorage.setItem('username', randomUsername)
     return randomUsername
   }
-
 
   const socket = io({
     auth: {
@@ -47,6 +47,7 @@
     messages.scrollTop = messages.scrollHeight
   })
 
+  // Escuchar si se ha hecho click en el boton submit
   form.addEventListener('submit', (e) => {
     e.preventDefault()
 

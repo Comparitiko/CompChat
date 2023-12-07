@@ -26,6 +26,7 @@ const db = createClient({
   authToken: process.env.DB_TOKEN
 })
 
+// Crear tabla en la DB
 await db.execute(`
 CREATE TABLE IF NOT EXISTS messages (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -59,6 +60,7 @@ io.on('connection', async (socket) => {
     io.emit('chat message', msg, result.lastInsertRowid.toString(), username)
   })
 
+  // Si no se ha podido recuperar el socket recuperara todos los mensajes escritos hasta ese momento
   if (!socket.recovered) {
     try {
       const results = await db.execute({
