@@ -1,8 +1,12 @@
 import express from 'express'
 import logger from 'morgan'
+import dotenv from 'dotenv'
+import { createClient } from '@libsql/client'
 
 import { Server } from 'socket.io'
 import { createServer } from 'node:http'
+
+dotenv.config()
 
 const port = process.env.PORT ?? 3000
 
@@ -16,8 +20,22 @@ const io = new Server(server, {
   connectionStateRecovery: { maxDisconnectionDuration: 60 }
 })
 
+// Conexion base de datos
+const db = createClient({
+  url: 'libsql://classic-invisible-woman-comparitiko.turso.io',
+  authToken: process.env.DB_TOKEN
+})
+
+await db.execute(`
+CREATE TABLE IF NOT EXISTS messages (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  content TEXT,
+  user TEXT
+)
+`)
+
 // Detectar cuando hay una conexion
-io.on('connection', (socket) => {
+io.on('connection', async (socket) => {
   console.log('Un usuario se ha conectado')
 
   // Detectar cuando hay una desconexion
@@ -25,10 +43,35 @@ io.on('connection', (socket) => {
     console.log('Un usuario se ha desconectado')
   })
 
-  // Detectar mensajes y mandarlos a todos los usuarios
-  socket.on('chat message', (msg) => {
-    io.emit('chat message', msg)
+  // Detectar mensajes y mandarlos a todos los usuarios e insertarlos en la base de datos
+  socket.on('chat message', async (msg) => {
+    let result
+    const username = socket.handshake.auth.username ?? 'anonymous'
+    try {
+      result = await db.execute({
+        sql: 'INSERT INTO messages (content, user) VALUES (:msg, :username)',
+        args: { msg, username }
+      })
+    } catch (e) {
+      console.log(e)
+      return
+    }
+    io.emit('chat message', msg, result.lastInsertRowid.toString(), username)
   })
+
+  if (!socket.recovered) {
+    try {
+      const results = await db.execute({
+        sql: 'SELECT id, content, user FROM messages WHERE id > ?',
+        args: [socket.handshake.auth.serverOffset ?? 0]
+      })
+      results.rows.forEach(row => {
+        socket.emit('chat message', row.content, row.id.toString(), row.user)
+      })
+    } catch (e) {
+      console.error(e)
+    }
+  }
 })
 
 // Usar morgan para ver eventos de login en consola
