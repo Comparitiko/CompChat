@@ -7,8 +7,8 @@ Para probar el chat solo sigue los siguientes pasos
 git clone https://github.com/Comparitiko/CompChat.git
 ```
 ```
-```
 cd CompChat
+```
 ```
 npm install
 ```
